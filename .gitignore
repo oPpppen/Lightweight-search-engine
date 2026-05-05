@@ -15,3 +15,16 @@ cmake-build-*/
 *.log
 *.tmp
 .DS_Store
+
+# build files
+build/
+cmake-build-*/
+*.o
+*.out
+*.a
+*.so
+*.exe
+
+# logs/temp
+*.log
+*.tmp
