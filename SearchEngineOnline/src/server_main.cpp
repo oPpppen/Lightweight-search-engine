@@ -20,12 +20,12 @@ int main(int argc, char* argv[])
     muduo::net::EventLoop loop;
     muduo::net::InetAddress listenAddr(port);
 
-    const std::string dictFile = "data/dict.dat";
-    const std::string indexFile = "data/index.dat";
-    const std::string pageLibFile = "data/pagelib.dat";
-    const std::string offsetLibFile = "data/offset.dat";
+    const std::string dictFile = "data/ch_dict.dat";
+    const std::string indexFile = "data/ch_index.dat";
+    const std::string pageLibFile = "data/pages.dat";
+    const std::string offsetLibFile = "data/offsets.dat";
     const std::string invertedIndexFile = "data/inverted_index.dat";
-    const std::string stopWordsFile = "data/stop_words.txt";
+    const std::string stopWordsFile = "data/stopwords_cn.txt";
 
     SearchServer server(&loop,
                         listenAddr,

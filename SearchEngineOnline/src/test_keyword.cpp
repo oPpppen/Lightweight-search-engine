@@ -5,9 +5,9 @@
 
 int main(int argc, char* argv[])
 {
-    std::string dictFile = "data/dict.dat";
-    std::string indexFile = "data/index.dat";
-    std::string query = "苹果";
+    std::string dictFile = "data/ch_dict.dat";
+    std::string indexFile = "data/ch_index.dat";
+    std::string query = "中国";
 
     if (argc >= 3) {
         dictFile = argv[1];

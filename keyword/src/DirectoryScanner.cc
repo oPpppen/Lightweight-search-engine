@@ -1,6 +1,9 @@
 #include "DirectoryScanner.h"
+#include <algorithm>
+#include <cerrno>
+#include <cstring>
 #include <dirent.h>
-#include <string.h>
+#include <iostream>
 
 std::vector<std::string> DirectoryScanner::scan(const std::string &dir) {
   std::vector<std::string> result;
@@ -8,6 +11,8 @@ std::vector<std::string> DirectoryScanner::scan(const std::string &dir) {
   //打开目录流
   DIR *dirp = opendir(dir.c_str());
   if (!dirp) {
+    std::cerr << "Failed to open directory: " << dir
+              << ", error: " << std::strerror(errno) << std::endl;
     return result;
   }
 
@@ -33,5 +38,6 @@ std::vector<std::string> DirectoryScanner::scan(const std::string &dir) {
 
   //关闭目录流
   closedir(dirp);
+  std::sort(result.begin(), result.end());
   return result;
 }

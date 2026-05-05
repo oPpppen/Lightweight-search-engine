@@ -5,11 +5,11 @@
 
 int main(int argc, char* argv[])
 {
-    std::string pageLibFile = "data/pagelib.dat";
-    std::string offsetFile = "data/offset.dat";
+    std::string pageLibFile = "data/pages.dat";
+    std::string offsetFile = "data/offsets.dat";
     std::string invertedFile = "data/inverted_index.dat";
-    std::string stopWordsFile = "data/stop_words.txt";
-    std::string query = "人工智能 机器学习";
+    std::string stopWordsFile = "data/stopwords_cn.txt";
+    std::string query = "中国";
 
     if (argc >= 5) {
         pageLibFile = argv[1];

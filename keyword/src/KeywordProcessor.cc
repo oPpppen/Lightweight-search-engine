@@ -1,6 +1,9 @@
 //#include <assert.h>
 #include <cppjieba/Jieba.hpp>
+#include <algorithm>
+#include <cctype>
 #include <dirent.h>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -45,74 +48,118 @@ bool chinese_string(const std::string &str) {
   return true;
 }
 
+std::string build_jieba_path(const std::string &dir,
+                             const std::string &filename) {
+  if (dir.empty()) {
+    return filename;
+  }
+  if (dir.back() == '/') {
+    return dir + filename;
+  }
+  return dir + "/" + filename;
+}
+
 //加载中英文停用词
-KeyWordProcessor::KeyWordProcessor() {
+KeyWordProcessor::KeyWordProcessor(const std::string &jiebaDictDir,
+                                   const std::string &stopwordDir,
+                                   const std::string &outputDir)
+    : tokenizer_(build_jieba_path(jiebaDictDir, "jieba.dict.utf8"),
+                 build_jieba_path(jiebaDictDir, "hmm_model.utf8"),
+                 build_jieba_path(jiebaDictDir, "user.dict.utf8"),
+                 build_jieba_path(jiebaDictDir, "idf.utf8"),
+                 build_jieba_path(jiebaDictDir, "stop_words.utf8")),
+      outputDir_(outputDir) {
+  std::filesystem::create_directories(outputDir_);
+
   {
     //加载中文停用词
-    std::ifstream ifsCh("../stopwords/stopwords_cn.txt");
+    std::ifstream ifsCh(stopwordDir + "/stopwords_cn.txt");
+    if (!ifsCh.is_open()) {
+      std::cerr << "Failed to open Chinese stopword file: "
+                << stopwordDir + "/stopwords_cn.txt" << std::endl;
+    }
     std::string word;
     while (ifsCh >> word) {
       chStopWords_.insert(word);
     }
-    ifsCh.close();
 
     //加载英文停用词
-    std::ifstream ifsEn("../stopwords/stopwords_en.txt");
+    std::ifstream ifsEn(stopwordDir + "/stopwords_en.txt");
+    if (!ifsEn.is_open()) {
+      std::cerr << "Failed to open English stopword file: "
+                << stopwordDir + "/stopwords_en.txt" << std::endl;
+    }
     while (ifsEn >> word) {
       enStopWords_.insert(word);
     }
-    ifsEn.close();
   }
 }
 
-void KeyWordProcessor::create_cn_dict(const std::string &chDir,
+bool KeyWordProcessor::create_cn_dict(const std::string &chDir,
                                       const std::string &chDict) {
 
   //获取目录下的所有文件名
   std::vector<std::string> files = DirectoryScanner::scan(chDir);
+  if (files.empty()) {
+    std::cerr << "No Chinese corpus files found in directory: " << chDir
+              << std::endl;
+  }
   //词->词频
   std::map<std::string, int> dict;
 
   for (const auto &file : files) {
 
     std::ifstream ifs(file);
+    if (!ifs.is_open()) {
+      std::cerr << "Failed to open Chinese corpus file: " << file << std::endl;
+      continue;
+    }
     std::string line;
-    while (getline(ifs, line)) {
+    while (std::getline(ifs, line)) {
       std::vector<std::string> words;
       //结巴分词
       tokenizer_.Cut(line, words);
 
       //只保留中文且非停用词词语
-      words.erase(remove_if(words.begin(), words.end(),
-                            [this](const std::string &word) {
-                              return !chinese_string(word) ||
-                                     chStopWords_.count(word) > 0;
-                            }),
+      words.erase(std::remove_if(words.begin(), words.end(),
+                                 [this](const std::string &word) {
+                                   return !chinese_string(word) ||
+                                          chStopWords_.count(word) > 0;
+                                 }),
                   words.end());
       //统计词频
       for (const auto &word : words) {
         dict[word]++;
       }
     }
-    ifs.close();
   }
 
   //写入词典文件:词 词频
   std::ofstream ofs(chDict);
+  if (!ofs.is_open()) {
+    std::cerr << "Failed to open Chinese dictionary output file: " << chDict
+              << std::endl;
+    return false;
+  }
   for (const auto &[key, val] : dict) {
     ofs << key << " " << val << "\n";
   }
-  ofs.close();
+  return true;
 }
-void KeyWordProcessor::build_cn_index(const std::string &chDict,
+bool KeyWordProcessor::build_cn_index(const std::string &chDict,
                                       const std::string &chIndex) {
   std::ifstream ifs(chDict);
+  if (!ifs.is_open()) {
+    std::cerr << "Failed to open Chinese dictionary file: " << chDict
+              << std::endl;
+    return false;
+  }
   std::string content;
   int line = 1;
 
   //构建索引表(汉字->行号)
   std::map<std::string, std::set<int>> result;
-  while (getline(ifs, content)) {
+  while (std::getline(ifs, content)) {
     //提取词
     std::string word = content.substr(0, content.find(' '));
 
@@ -127,10 +174,14 @@ void KeyWordProcessor::build_cn_index(const std::string &chDict,
     }
     line++;
   }
-  ifs.close();
 
   //写入索引文件:汉字 行号1 行号2...
   std::ofstream ofs(chIndex);
+  if (!ofs.is_open()) {
+    std::cerr << "Failed to open Chinese index output file: " << chIndex
+              << std::endl;
+    return false;
+  }
   for (const auto &[character, lineNumbers] : result) {
     ofs << character << " ";
     for (auto lineNumber : lineNumbers) {
@@ -138,25 +189,33 @@ void KeyWordProcessor::build_cn_index(const std::string &chDict,
     }
     ofs << "\n";
   }
-  ofs.close();
+  return true;
 }
 
-void KeyWordProcessor::create_en_dict(const std::string &enDir,
+bool KeyWordProcessor::create_en_dict(const std::string &enDir,
                                       const std::string &enDict) {
 
   std::map<std::string, int> dict;
   std::vector<std::string> files = DirectoryScanner::scan(enDir);
+  if (files.empty()) {
+    std::cerr << "No English corpus files found in directory: " << enDir
+              << std::endl;
+  }
 
   for (const auto &file : files) {
     std::ifstream ifs(file);
+    if (!ifs.is_open()) {
+      std::cerr << "Failed to open English corpus file: " << file << std::endl;
+      continue;
+    }
     std::string line;
-    while (getline(ifs, line)) {
+    while (std::getline(ifs, line)) {
       // 大写字母转小写并且将非字母字符替换为空格
       for (auto &c : line) {
-        if (!isalpha(c)) {
+        if (!std::isalpha(static_cast<unsigned char>(c))) {
           c = ' ';
         } else {
-          c = tolower(c);
+          c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         }
       }
 
@@ -169,26 +228,35 @@ void KeyWordProcessor::create_en_dict(const std::string &enDir,
         dict[word]++;
       }
     }
-    ifs.close();
   }
 
   // 写入英文词典：单词 词频
   std::ofstream ofs(enDict);
+  if (!ofs.is_open()) {
+    std::cerr << "Failed to open English dictionary output file: " << enDict
+              << std::endl;
+    return false;
+  }
   for (const auto &[key, val] : dict) {
     ofs << key << " " << val << "\n";
   }
-  ofs.close();
+  return true;
 }
 
-void KeyWordProcessor::build_en_index(const std::string &enDict,
+bool KeyWordProcessor::build_en_index(const std::string &enDict,
                                       const std::string &enIndex) {
 
   std::ifstream ifs(enDict);
+  if (!ifs.is_open()) {
+    std::cerr << "Failed to open English dictionary file: " << enDict
+              << std::endl;
+    return false;
+  }
   std::string content;
   int line = 1;
   std::map<std::string, std::set<int>> result; // 字母 → 包含该字母的单词所在行号
 
-  while (getline(ifs, content)) {
+  while (std::getline(ifs, content)) {
     std::string word = content.substr(0, content.find(' ')); // 提取单词
 
     // 遍历单词中的每个字母
@@ -198,10 +266,14 @@ void KeyWordProcessor::build_en_index(const std::string &enDict,
     }
     line++;
   }
-  ifs.close();
 
   // 写入索引文件：字母 行号1 行号2 ...
   std::ofstream ofs(enIndex);
+  if (!ofs.is_open()) {
+    std::cerr << "Failed to open English index output file: " << enIndex
+              << std::endl;
+    return false;
+  }
   for (const auto &[character, lines] : result) {
     ofs << character << " ";
     for (auto line : lines) {
@@ -209,5 +281,5 @@ void KeyWordProcessor::build_en_index(const std::string &enDict,
     }
     ofs << "\n";
   }
-  ofs.close();
+  return true;
 }

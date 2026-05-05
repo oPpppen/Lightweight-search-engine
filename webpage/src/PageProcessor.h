@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -11,32 +12,43 @@
 class PageProcessor {
 public:
   //构造函数，加载停用词表
-  PageProcessor();
+  PageProcessor(const std::string &jiebaDictDir,
+                const std::string &stopwordDir,
+                const std::string &outputDir);
 
-  void process(const std::string &dir) {
+  bool process(const std::string &dir) {
     // 1.从XML中提取文档
-    extract_documents(dir);
+    if (!extract_documents(dir)) {
+      return false;
+    }
     // 2.去重
     deduplicate_documents();
     // 3.构建网页库和偏移库
-    build_pages_and_offsets("../pages.dat", "../offsets.dat");
+    if (!build_pages_and_offsets(outputDir_ + "/pages.dat",
+                                 outputDir_ + "/offsets.dat")) {
+      return false;
+    }
     // 4.构建倒排索引
-    build_inverted_index("../inverted_index.dat");
+    if (!build_inverted_index(outputDir_ + "/inverted_index.dat")) {
+      return false;
+    }
+
+    return true;
   }
 
 private:
   //从XML目录中提取文档
-  void extract_documents(const std::string &dir);
+  bool extract_documents(const std::string &dir);
 
   //用simhash对文档去重
   void deduplicate_documents();
 
   //构建网页库和偏移库
-  void build_pages_and_offsets(const std::string &pages,
+  bool build_pages_and_offsets(const std::string &pages,
                                const std::string &offsets);
 
   //构建倒排索引
-  void build_inverted_index(const std::string &filename);
+  bool build_inverted_index(const std::string &filename);
 
 private:
   //文档结构体，表示一个网页文档
@@ -54,4 +66,5 @@ private:
   std::vector<Document> documents_; //文档
   //倒排索引：词-><文档ID,权重>
   std::map<std::string, std::map<int, double>> invertedIndex_;
+  std::string outputDir_;
 };

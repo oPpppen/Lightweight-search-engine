@@ -53,6 +53,7 @@ private:
     std::string pageLibFile_;
     std::unordered_map<int, Offset> offsetLib_;
     std::unordered_map<std::string, std::unordered_map<int, double>> invertedIndex_;
+    std::unordered_map<int, double> docNorms_;
     std::unordered_set<std::string> stopWords_;
     cppjieba::Jieba tokenizer_;
 };

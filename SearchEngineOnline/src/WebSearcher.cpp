@@ -142,7 +142,13 @@ void WebSearcher::loadInvertedIndex(const std::string& invertedIndexFile)
         double weight = 0.0;
         while (iss >> docId >> weight) {
             invertedIndex_[word][docId] = weight;
+            docNorms_[docId] += weight * weight;
         }
+    }
+
+    for (auto& [docId, normSquare] : docNorms_) {
+        (void)docId;
+        normSquare = std::sqrt(normSquare);
     }
 }
 
@@ -182,10 +188,43 @@ std::vector<std::string> WebSearcher::cutQuery(const std::string& query) const
 std::unordered_map<std::string, double> WebSearcher::buildQueryVector(
     const std::vector<std::string>& words) const
 {
+    if (words.empty() || offsetLib_.empty()) {
+        return {};
+    }
+
     std::unordered_map<std::string, double> queryVector;
     for (const auto& word : words) {
         queryVector[word] += 1.0;
     }
+
+    const double totalWords = static_cast<double>(words.size());
+    const double docCount = static_cast<double>(offsetLib_.size());
+    double normSquare = 0.0;
+
+    for (auto& [word, weight] : queryVector) {
+        const double tf = weight / totalWords;
+
+        double df = 0.0;
+        auto indexIt = invertedIndex_.find(word);
+        if (indexIt != invertedIndex_.end()) {
+            df = static_cast<double>(indexIt->second.size());
+        }
+
+        const double idf = std::log2(docCount / (df + 1.0));
+        weight = tf * idf;
+        normSquare += weight * weight;
+    }
+
+    if (normSquare == 0.0) {
+        return queryVector;
+    }
+
+    const double norm = std::sqrt(normSquare);
+    for (auto& [word, weight] : queryVector) {
+        (void)word;
+        weight /= norm;
+    }
+
     return queryVector;
 }
 
@@ -241,7 +280,6 @@ double WebSearcher::cosineSimilarity(
 {
     double dot = 0.0;
     double queryNormSquare = 0.0;
-    double docNormSquare = 0.0;
 
     for (const auto& [word, queryWeight] : queryVector) {
         queryNormSquare += queryWeight * queryWeight;
@@ -256,10 +294,14 @@ double WebSearcher::cosineSimilarity(
         }
 
         dot += queryWeight * docWeight;
-        docNormSquare += docWeight * docWeight;
     }
 
-    const double denominator = std::sqrt(queryNormSquare) * std::sqrt(docNormSquare);
+    auto docNormIt = docNorms_.find(docId);
+    if (docNormIt == docNorms_.end()) {
+        return 0.0;
+    }
+
+    const double denominator = std::sqrt(queryNormSquare) * docNormIt->second;
     if (denominator == 0.0) {
         return 0.0;
     }

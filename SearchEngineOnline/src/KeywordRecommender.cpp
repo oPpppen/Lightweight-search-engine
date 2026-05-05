@@ -9,8 +9,20 @@
 KeywordRecommender::KeywordRecommender(const std::string& dictFile,
                                        const std::string& indexFile)
 {
+    lineToWord_.push_back("");
     loadDict(dictFile);
     loadIndex(indexFile);
+
+    const std::size_t englishLineOffset = lineToWord_.size() - 1;
+    const std::string enDictFile = inferSiblingFile(dictFile, "ch_dict.dat", "en_dict.dat");
+    const std::string enIndexFile = inferSiblingFile(indexFile, "ch_index.dat", "en_index.dat");
+
+    std::ifstream ifsEnDict(enDictFile);
+    std::ifstream ifsEnIndex(enIndexFile);
+    if (ifsEnDict && ifsEnIndex) {
+        loadDict(enDictFile);
+        loadIndex(enIndexFile, englishLineOffset);
+    }
 }
 
 std::string KeywordRecommender::recommend(const std::string& query, int k)
@@ -28,7 +40,17 @@ std::string KeywordRecommender::recommend(const std::string& query, int k)
     for (const auto& ch : chars) {
         auto it = index_.find(ch);
         if (it != index_.end()) {
-            candidates.insert(it->second.begin(), it->second.end());
+            for (int lineNumber : it->second) {
+                if (lineNumber <= 0 ||
+                    static_cast<std::size_t>(lineNumber) >= lineToWord_.size()) {
+                    continue;
+                }
+
+                const std::string& word = lineToWord_[static_cast<std::size_t>(lineNumber)];
+                if (!word.empty()) {
+                    candidates.insert(word);
+                }
+            }
         }
     }
 
@@ -84,14 +106,27 @@ void KeywordRecommender::loadDict(const std::string& dictFile)
         return;
     }
 
-    std::string word;
-    int frequency = 0;
-    while (ifs >> word >> frequency) {
+    std::string line;
+    while (std::getline(ifs, line)) {
+        if (line.empty()) {
+            lineToWord_.push_back("");
+            continue;
+        }
+
+        std::istringstream iss(line);
+        std::string word;
+        int frequency = 0;
+        if (!(iss >> word >> frequency)) {
+            lineToWord_.push_back("");
+            continue;
+        }
+
+        lineToWord_.push_back(word);
         dict_[word] = frequency;
     }
 }
 
-void KeywordRecommender::loadIndex(const std::string& indexFile)
+void KeywordRecommender::loadIndex(const std::string& indexFile, std::size_t lineOffset)
 {
     std::ifstream ifs(indexFile);
     if (!ifs) {
@@ -112,11 +147,25 @@ void KeywordRecommender::loadIndex(const std::string& indexFile)
             continue;
         }
 
-        std::string word;
-        while (iss >> word) {
-            index_[key].insert(word);
+        int lineNumber = 0;
+        while (iss >> lineNumber) {
+            if (lineNumber <= 0) {
+                continue;
+            }
+            index_[key].insert(static_cast<int>(lineOffset + static_cast<std::size_t>(lineNumber)));
         }
     }
+}
+
+std::string KeywordRecommender::inferSiblingFile(const std::string& path,
+                                                 const std::string& fromName,
+                                                 const std::string& toName) const
+{
+    const std::size_t pos = path.rfind(fromName);
+    if (pos == std::string::npos) {
+        return path;
+    }
+    return path.substr(0, pos) + toName;
 }
 
 std::vector<std::string> KeywordRecommender::splitUtf8Chars(const std::string& str) const

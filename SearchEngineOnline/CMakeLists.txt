@@ -26,6 +26,10 @@ target_link_libraries(search_server
     rt
 )
 
+set_target_properties(search_server PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
+
 add_executable(search_client
     src/Codec.cpp
     src/client_main.cpp
@@ -38,12 +42,24 @@ target_link_libraries(search_client
     rt
 )
 
+set_target_properties(search_client PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
+
 add_executable(test_keyword
     src/KeywordRecommender.cpp
     src/test_keyword.cpp
 )
 
+set_target_properties(test_keyword PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
+
 add_executable(test_websearch
     src/WebSearcher.cpp
     src/test_websearch.cpp
+)
+
+set_target_properties(test_websearch PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 )

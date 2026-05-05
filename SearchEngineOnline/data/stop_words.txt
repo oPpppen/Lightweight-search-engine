@@ -1,9 +1,0 @@
-是
-的
-一个
-重要
-*** Update File: /home/hgx/cpp70/homework/huasheng_cppimproved/search_engine/SearchEngineOnline/CMakeLists.txt
-add_executable(test_websearch
-    src/WebSearcher.cpp
-    src/test_websearch.cpp
-)

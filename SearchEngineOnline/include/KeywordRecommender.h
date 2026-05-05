@@ -14,7 +14,10 @@ public:
 
 private:
     void loadDict(const std::string& dictFile);
-    void loadIndex(const std::string& indexFile);
+    void loadIndex(const std::string& indexFile, std::size_t lineOffset = 0);
+    std::string inferSiblingFile(const std::string& path,
+                                 const std::string& fromName,
+                                 const std::string& toName) const;
 
     std::vector<std::string> splitUtf8Chars(const std::string& str) const;
     int editDistance(const std::string& lhs, const std::string& rhs) const;
@@ -24,5 +27,6 @@ private:
 
 private:
     std::unordered_map<std::string, int> dict_;
-    std::unordered_map<std::string, std::set<std::string>> index_;
+    std::vector<std::string> lineToWord_;
+    std::unordered_map<std::string, std::set<int>> index_;
 };

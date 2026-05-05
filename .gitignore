@@ -1,30 +1,38 @@
 # build
-build/
+/build/
+**/build/
 cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+# binaries and objects
 *.o
 *.out
 *.a
 *.so
 *.exe
+/keyword_builder
+/webpage_builder
+/search_server
+/search_client
+/test_keyword
+/test_websearch
+/keyword/src/keyword_builder
+/webpage/src/webpage_builder
+
+# generated data
+/keyword/*.dat
+/webpage/*.dat
+/SearchEngineOnline/data/*.dat
+/SearchEngineOnline/data/stopwords_cn.txt
 
 # editor
 .vscode/
 .idea/
 
-# temp
-*.log
-*.tmp
-.DS_Store
-
-# build files
-build/
-cmake-build-*/
-*.o
-*.out
-*.a
-*.so
-*.exe
-
 # logs/temp
 *.log
 *.tmp
+.DS_Store
