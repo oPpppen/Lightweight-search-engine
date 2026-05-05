@@ -1,0 +1,17 @@
+# build
+build/
+cmake-build-*/
+*.o
+*.out
+*.a
+*.so
+*.exe
+
+# editor
+.vscode/
+.idea/
+
+# temp
+*.log
+*.tmp
+.DS_Store
